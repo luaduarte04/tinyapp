@@ -16,6 +16,12 @@ app.post("/urls", (req, res) => {
   console.log(urlDatabase);
 });
 
+// DELETE AND URL ENTRY
+app.post("/urls/:shortURL/delete", (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  res.redirect("/urls")
+});
+
 // "DATABASE"
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -56,3 +62,6 @@ app.listen(PORT, () => {
 });
 
 console.log(urlDatabase);
+
+
+// Once the user submits an Update request, it should modify the corresponding longURL, and then redirect the client back to "/urls".
