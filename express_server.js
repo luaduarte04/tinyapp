@@ -6,6 +6,23 @@ const PORT = 8080; // default port 8080
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 
+// "DATABASE"
+const urlDatabase = {
+  "b2xVn2": "http://www.lighthouselabs.ca",
+  "9sm5xK": "http://www.google.com"
+};
+
+// GENERATES SHORT URLS
+function generateRandomString() {
+  let randomString = "";
+  let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  
+  for (let i = 0; i < 6; i++ ) {
+    randomString += characters.charAt(Math.floor(Math.random() * 62));
+  }
+  return randomString;
+}
+
 // SAVE, STORE AND ASSIGN SMALL URL TO LONG URL
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
@@ -16,17 +33,18 @@ app.post("/urls", (req, res) => {
   console.log(urlDatabase);
 });
 
-// DELETE AND URL ENTRY
+// DELETE AN URL ENTRY
 app.post("/urls/:shortURL/delete", (req, res) => {
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls")
 });
 
-// "DATABASE"
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
-};
+// UPDATE AN URL AND REDIRECT TO URLS
+app.post("/urls/:shortURL", (req, res) => {
+  // req.params used for path / req.body used for forms
+  urlDatabase[req.params.shortURL] = req.body.longURL;
+  res.redirect("/urls")
+});
 
 // RENDER THE PAGE FOR THE LIST OF SAVED URLS
 app.get("/urls", (req, res) => {
@@ -44,17 +62,6 @@ app.get("/urls/:shortURL", (req, res) => {
   let templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
   res.render("urls_show", templateVars);
 });
-
-// GENERATES SHORT URLS
-function generateRandomString() {
-  let randomString = "";
-  let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  
-  for (let i = 0; i < 6; i++ ) {
-    randomString += characters.charAt(Math.floor(Math.random() * 62));
-  }
-  return randomString;
-}
 
 // SHOW ON CONSOLE THAT WE CONNECT TO THE SERVER
 app.listen(PORT, () => {
