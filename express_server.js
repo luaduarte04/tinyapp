@@ -1,6 +1,8 @@
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
 const express = require("express");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -112,6 +114,8 @@ const updateURL = (shortURL, longURL) => {
 };
 
 const addNewUser = (email, password) => {
+  // hash passwords
+  const salt = bcrypt.genSaltSync(saltRounds);
   // Generate a random id
   const userId = generateRandomString(8);
 
@@ -119,11 +123,12 @@ const addNewUser = (email, password) => {
   const newUserObj = {
     id: userId,
     email,
-    password,
+    password: bcrypt.hashSync(password, salt)
   };
 
   // Add the user Object into the usersDb
   users[userId] = newUserObj;
+  console.log("newUserObj", newUserObj);
 
   // return the id of the user
   return userId;
@@ -144,7 +149,7 @@ const authenticateUser = (email, password) => {
   const user = findUserByEmail(email);  
 
   // if we got a user back and the passwords match then return the userObj
-  if (user && user.password === password) {
+  if (user && bcrypt.compareSync(password, user.password)) {
     // user is authenticated
     return user;
   } else {
@@ -223,14 +228,13 @@ app.post('/login', (req, res) => {
   // extract the info from the form
   const email = req.body.email;
   const password = req.body.password;
-  // const userId = checkUserByEmail(email);
 
   // Authenticate the user
   const user = authenticateUser(email, password);
-
+  
   // if authenticated, set cookie with its user id and redirect
   if (user) {
-    res.cookie('user_id', userId.id);
+    res.cookie('user_id', user.id);
     res.redirect('/urls');
   } else if (user === false) {
     // email or password are incorrect
