@@ -12,5 +12,3 @@ const findUserByEmail = (email, database) => {
 };
 
 module.exports = { findUserByEmail };
-
-// We lookup a user in our database whenever we register or login a user. To avoid duplicating the logic for looking up users in multiple routes, we should write a function that does this for us, and then we call that function wherever we need it.

@@ -40,18 +40,18 @@ const urlDatabase = {
 };
 
 // REGISTERED USERS
-const users = { 
+const users = {
   "userRandomID": {
-    id: "userRandomID", 
-    email: "user@example.com", 
+    id: "userRandomID",
+    email: "user@example.com",
     password: "purple-monkey-dinosaur"
   },
- "user2RandomID": {
-    id: "user2RandomID", 
-    email: "user2@example.com", 
+  "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
     password: "dishwasher-funk"
   }
-}
+};
 
 
 /////////////////////////////////
@@ -69,15 +69,15 @@ const urlsForUser = (id) => {
 };
 
 // GENERATES SHORT URLS
-function generateRandomString() {
+const generateRandomString = function() {
   let randomString = "";
   let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   
-  for (let i = 0; i < 6; i++ ) {
+  for (let i = 0; i < 6; i++) {
     randomString += characters.charAt(Math.floor(Math.random() * 62));
   }
   return randomString;
-}
+};
 
 
 /////////////////////////////////////////
@@ -125,7 +125,7 @@ const addNewUser = (email, password) => {
 
 const authenticateUser = (email, password) => {
   // retrieve the user with that email
-  const user = findUserByEmail(email, users);  
+  const user = findUserByEmail(email, users);
 
   // if we got a user back and the passwords match then return the userObj
   if (user && bcrypt.compareSync(password, user.password)) {
@@ -153,7 +153,7 @@ app.post("/urls", (req, res) => {
   const loggedInUser = users[userId];
   // designate url to logged in user
   let templateVars = { shortURL, longURL, users: loggedInUser };
-  res.render("urls_show", templateVars); 
+  res.render("urls_show", templateVars);
 });
 
 // DELETE AN URL ENTRY
@@ -181,7 +181,7 @@ app.post("/urls/:shortURL", (req, res) => {
 
   // callback function to update url
   updateURL(shortURL, longURL);
-  res.redirect("/urls")
+  res.redirect("/urls");
 });
 
 // HANDLES THE REGISTRATION FORM DATA
