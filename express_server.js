@@ -1,13 +1,23 @@
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const express = require("express");
 const bcrypt = require('bcrypt');
+const { findUserByEmail } = require('./helpers');
 const saltRounds = 10;
 const app = express();
+
 const PORT = 8080; // default port 8080
 
 
-app.use(cookieParser())
+app.use(
+  cookieSession({
+    name: 'session',
+    keys: [
+      '8f232fc4-47de-41a1-a8cd-4f9323253715',
+      '1279e050-24c2-4cc6-a176-3d03d66948a2',
+    ],
+  }),
+);
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 
@@ -15,14 +25,8 @@ app.set("view engine", "ejs");
 /////////////////////////////////
 ////////// DATABASE ////////////
 
-// URLS
+// URLS DATABASE
 const urlDatabase = {
-  // "b2xVn2": "http://www.lighthouselabs.ca",
-  // "9sm5xK": "http://www.google.com",
-
-  // "b6UTxQ": { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
-  // "i3BoGr": { longURL: "https://www.google.ca", userID: "aJ48lW" },
-
   "b2xVn2": {
     shortURL: "b2xVn2",
     longURL: "http://www.tsn.ca",
@@ -53,7 +57,7 @@ const users = {
 /////////////////////////////////
 ////////// FUNCTIONS ///////////
 
-// RETURNS URL  WHERE USERID === TO ID OF LOGGED IN USER
+// RETURNS URL WHERE USERID === TO ID OF LOGGED IN USER
 const urlsForUser = (id) => {
   let result = [];
   for (let urlId in urlDatabase) {
@@ -75,19 +79,6 @@ function generateRandomString() {
   return randomString;
 }
 
-// FIND USER BY EMAIL
-const findUserByEmail = email => {
-  // loop through the users object
-  for (let userId in users) {
-    // compare the emails, if they match return the user obj
-    if (users[userId].email === email) {
-      return users[userId];
-    }
-  }
-  // else return false
-  return false;
-};
-
 
 /////////////////////////////////////////
 ////////// GLOBAL VARIABLES ////////////
@@ -104,7 +95,6 @@ const createNewURL = (longURL, userID) => {
 
   // Add the newlink object to urlDatabase
   urlDatabase[shortURL] = newURL;
-  console.log("newURL", newURL);
   return shortURL;
 };
 
@@ -128,25 +118,14 @@ const addNewUser = (email, password) => {
 
   // Add the user Object into the usersDb
   users[userId] = newUserObj;
-  console.log("newUserObj", newUserObj);
 
   // return the id of the user
   return userId;
 };
 
-// CHECK IF USER EXIST
-// const checkUserByEmail = email => {
-//   for (let userId in users) {
-//     if (users[userId].email === email) {
-//       return users[userId];
-//     }
-//   }
-//   return false;
-// };
-
 const authenticateUser = (email, password) => {
   // retrieve the user with that email
-  const user = findUserByEmail(email);  
+  const user = findUserByEmail(email, users);  
 
   // if we got a user back and the passwords match then return the userObj
   if (user && bcrypt.compareSync(password, user.password)) {
@@ -164,19 +143,27 @@ const authenticateUser = (email, password) => {
 
 // SAVE, STORE AND ASSIGN SMALL URL TO LONG URL
 app.post("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  // cookie
+  const userId = req.session.user_id;
+  // take longUrl from user input
   const longURL = req.body.longURL;
+  // create shortUrl by calling callback function
   const shortURL = createNewURL(longURL, userId);
+  // assign cookie to logged in user
   const loggedInUser = users[userId];
+  // designate url to logged in user
   let templateVars = { shortURL, longURL, users: loggedInUser };
   res.render("urls_show", templateVars); 
-  // res.redirect(`/urls/${shortURL}`);
 });
 
 // DELETE AN URL ENTRY
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const userId = req.cookies["user_id"];
+  // cookie
+  const userId = req.session.user_id;
+  // take short url from a place I dont remember
   const shortURL = req.params.shortURL;
+
+  // if user id match delete otherwise redirect
   if (userId === urlDatabase[shortURL].userID) {
     delete urlDatabase[shortURL];
     res.redirect("/urls");
@@ -187,10 +174,12 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 // UPDATE AN URL AND REDIRECT TO URLS
 app.post("/urls/:shortURL", (req, res) => {
+  // take short url from a place I dont remember
   const shortURL = req.params.shortURL;
+  // take longUrl from user input
   const longURL = req.body.longURL;
-  // req.params used for path / req.body used for forms
-  // urlDatabase[req.params.shortURL] = req.body.longURL;
+
+  // callback function to update url
   updateURL(shortURL, longURL);
   res.redirect("/urls")
 });
@@ -202,25 +191,18 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
 
   // check if the user is not already in the database
-  const user = findUserByEmail(email);
+  const user = findUserByEmail(email, users);
 
   // if not in the database, add user
   if (!user) {
     const userId = addNewUser(email, password);
-    // setCookie with the user id
-    res.cookie('user_id', userId);
+    req.session.user_id = userId;
     res.redirect('/urls');
   } else if (email === "" || password === "") {
     res.status(411).send('Please complet your email and password field');
   } else {
     res.status(403).send('Sorry, the user is already registered');
   }
-
-  // if (!checkUserByEmail(email)) {
-  //   const userId = addNewUser(email, password);
-  //   res.cookie("user_id", userId);
-  //   res.redirect("/urls");
-  // }
 });
 
 // LOGIN
@@ -234,7 +216,7 @@ app.post('/login', (req, res) => {
   
   // if authenticated, set cookie with its user id and redirect
   if (user) {
-    res.cookie('user_id', user.id);
+    req.session.user_id = user.id;
     res.redirect('/urls');
   } else if (user === false) {
     // email or password are incorrect
@@ -243,22 +225,11 @@ app.post('/login', (req, res) => {
     // user with that e-mail cannot be found
     res.status(403).send('Email cannot be found');
   }
-
-  // if (!userId.email) {
-  //   res.status(403).send('User with this email cannot be found!');
-  // } else if (userId.email) {
-  //     if (password !== userId.password) {
-  //       res.status(403).send('Incorrect password!');
-  //     } else {
-  //   res.cookie("user_id", userId.id);
-  //   res.redirect("/urls");
-  //   }
-  // }
 });
 
 // LOGOUT
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id', null);
+  req.session = null;
   res.redirect("/urls");
 });
 
@@ -268,8 +239,11 @@ app.post("/logout", (req, res) => {
 
 // RENDER THE PAGE FOR THE NEW URL FORM
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies['user_id'];
+  // cookie
+  const userId = req.session.user_id;
+  // assign cookie to logged user
   const loggedInUser = users[userId];
+  // take user from users database
   let templateVars = { users: loggedInUser };
 
   // Authenticate the user
@@ -285,13 +259,16 @@ app.get("/urls/new", (req, res) => {
 
 // RENDER THE PAGE FOR THE BRAND NEW GENERATED SHORT URL
 app.get("/urls/:shortURL", (req, res) => {
+  // cookie
+  const userId = req.session.user_id;
+  // take info from form
   const shortURL = req.params.shortURL;
-  const userId = req.cookies['user_id'];
+  // assign cookie to logged user
   const loggedInUser = users[userId];
+  // add url to database?!
   let templateVars = { shortURL, longURL: urlDatabase[shortURL].longURL, users: loggedInUser };
   
-  console.log("loggedInUSer", loggedInUser, "db user id", urlDatabase[shortURL].userID);
-
+  // if user id match with id in database do:
   if (loggedInUser.id === urlDatabase[shortURL].userID) {
     res.render("urls_show", templateVars);
   } else {
@@ -299,42 +276,41 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 });
 
-// NOT SURE WHAT IS THAT - AN ERROR MAYBE???
-app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  res.redirect(longURL);
-});
+
 
 /////////////////////////////////
 //////// AUTENTICATION /////////
 
 // RENDER THE PAGE FOR THE LIST OF SAVED URLS AND LOGIN NAME
 app.get("/urls", (req, res) => {
-  const userId = req.cookies['user_id'];
+  // cookie
+  const userId = req.session.user_id;
+  // assign cookie to logged user
   const loggedInUser = users[userId];
+  // not sure what it does :O
   const urls = urlsForUser(userId);
-  console.log("urls", urls);
   let templateVars = { urls, users: loggedInUser };
+
   res.render("urls_index", templateVars);
 });
 
 // DISPLAY THE REGISTER FORM
 app.get('/register', (req, res) => {
-  const userId = req.cookies['user_id'];
+  // cookie
+  const userId = req.session.user_id;
+  // assign cookie to logged user
   const loggedInUser = users[userId];
   let templateVars = { users: loggedInUser };
 
-  //const templateVars = { users: null };
   res.render('register', templateVars);
 });
 
 // DISPLAY THE LOGIN FORM
 app.get('/login', (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   const loggedInUser = users[userId];
   let templateVars = { users: loggedInUser };
 
-  //const templateVars = { users: null };
   res.render('login', templateVars);
 });
 
@@ -344,7 +320,3 @@ app.get('/login', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
-
-console.log(urlDatabase);
-
-
