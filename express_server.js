@@ -79,10 +79,7 @@ const generateRandomString = function() {
   return randomString;
 };
 
-
-/////////////////////////////////////////
-////////// GLOBAL VARIABLES ////////////
-
+// CREATE NEW URLS
 const createNewURL = (longURL, userID) => {
   const shortURL = generateRandomString(8);
 
@@ -98,11 +95,13 @@ const createNewURL = (longURL, userID) => {
   return shortURL;
 };
 
+// UPDATE URLS
 const updateURL = (shortURL, longURL) => {
   urlDatabase[shortURL].longURL = longURL;
   return true;
 };
 
+// ADD NEW USERS
 const addNewUser = (email, password) => {
   // hash passwords
   const salt = bcrypt.genSaltSync(saltRounds);
@@ -123,6 +122,7 @@ const addNewUser = (email, password) => {
   return userId;
 };
 
+// AUTHENTICATE USERS
 const authenticateUser = (email, password) => {
   // retrieve the user with that email
   const user = findUserByEmail(email, users);
