@@ -178,10 +178,14 @@ app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   // take longUrl from user input
   const longURL = req.body.longURL;
-
+  
+  if (longURL === "") {
+    res.status(411).send('Please type a valid name');
+  } else {
   // callback function to update url
   updateURL(shortURL, longURL);
   res.redirect("/urls");
+  }
 });
 
 // HANDLES THE REGISTRATION FORM DATA
@@ -274,6 +278,12 @@ app.get("/urls/:shortURL", (req, res) => {
   } else {
     res.send("Please login!");
   }
+});
+
+// SHORT URL ROUTE FOR LONG URL
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL].longURL;
+  res.redirect(longURL);
 });
 
 
